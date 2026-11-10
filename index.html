@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="hi"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JARVIS</title>
+<style>
+body{margin:0;background:#02060d;color:#9fb4c7;font-family:Segoe UI,Arial,sans-serif;text-align:center;min-height:100vh}
+canvas{display:block;margin:8px auto 0;max-width:100%}
+h1{font:700 28px Consolas,monospace;letter-spacing:6px;margin:0;color:#00beff}
+#st{font:12px Consolas,monospace;opacity:.7;margin:4px}
+#say{min-height:46px;padding:6px 20px}
+button,select,input,textarea{background:#0a1824;color:#cfe8ff;border:1px solid #1d4e6e;border-radius:8px;padding:9px 14px;margin:3px;font-size:14px}
+button{cursor:pointer}#go{background:#00beff;color:#02060d;font-weight:700;font-size:16px}
+textarea{width:min(520px,90%);height:80px;display:block;margin:8px auto}
+details{margin:10px auto;max-width:520px;font-size:13px}
+</style></head><body>
+<canvas id="c" width="420" height="420"></canvas>
+<h1>J.A.R.V.I.S</h1><div id="st">IDLE</div><div id="say">Start dabao, phir "Jarvis" bolo</div>
+<button id="go">▶ START JARVIS</button>
+<select id="lang"><option value="en-IN">English / Hinglish</option><option value="hi-IN">हिन्दी</option></select>
+<details><summary>⚙ Settings (Gemini API key)</summary>
+<input id="key" type="password" placeholder="Gemini API key" size="30"><button id="sv">Save</button>
+<div>Key sirf aapke browser mein save hoti hai. aistudio.google.com/apikey se free lo.</div></details>
+<details open><summary>✍ Typing box (likhna shuru karo bolo)</summary>
+<textarea id="tx" placeholder="Yahan aapki bolti hui baatein likhi jayengi"></textarea>
+<button id="cp">Copy</button><button id="cl">Clear</button></details>
+<script>
+const $=id=>document.getElementById(id), S={mode:'idle'};
+const MODEL='gemini-2.0-flash', SITES={chrome:'https://www.google.com',google:'https://www.google.com',youtube:'https://www.youtube.com',whatsapp:'https://web.whatsapp.com',gmail:'https://mail.google.com',instagram:'https://www.instagram.com',facebook:'https://www.facebook.com',maps:'https://maps.google.com',github:'https://github.com',chatgpt:'https://chatgpt.com',telegram:'https://web.telegram.org'};
+const DEV={'क्रोम':'chrome','गूगल':'google','यूट्यूब':'youtube','व्हाट्सएप':'whatsapp','खोलो':'kholo','खोल':'kholo','सर्च':'search','चलाओ':'chalao','लिखना शुरू':'likhna shuru','लिखना बंद':'likhna band','समय':'time','जार्विस':'jarvis','जारविस':'jarvis','जर्विस':'jarvis'};
+$('key').value=localStorage.getItem('jk')||'';
+$('sv').onclick=()=>{localStorage.setItem('jk',$('key').value.trim());say('Key save ho gayi.')};
+$('cp').onclick=()=>navigator.clipboard.writeText($('tx').value);$('cl').onclick=()=>$('tx').value='';
+
+/* ---------- greeting ---------- */
+function greet(){const h=new Date().getHours();
+ const w=h>=5&&h<12?'Good morning':h>=12&&h<17?'Good afternoon':h>=17&&h<21?'Good evening':'Good night';
+ return w+' Sir! Main Jarvis hoon. Bataiye, kya kaam hai?'}
+
+/* ---------- voice ---------- */
+let rec,on=false,busy=false,typing=false,awakeUntil=0;
+function say(t){$('say').textContent=t;S.mode='speaking';$('st').textContent='SPEAKING';busy=true;
+ speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='en-IN';u.rate=1;
+ const done=()=>{busy=false;S.mode=on?'listening':'idle';$('st').textContent=S.mode.toUpperCase()};
+ u.onend=done;u.onerror=done;speechSynthesis.speak(u)}
+function start(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){$('say').textContent='Chrome ya Edge browser use karo.';return}
+ rec=new SR();rec.lang=$('lang').value;rec.continuous=true;rec.interimResults=false;
+ rec.onresult=e=>{if(busy)return;heard(e.results[e.results.length-1][0].transcript.toLowerCase().trim())};
+ rec.onend=()=>{if(on)try{rec.start()}catch(e){}};
+ rec.start();on=true;S.mode='listening';$('st').textContent='LISTENING';say(greet())}
+$('go').onclick=()=>{if(!on){start();$('go').textContent='■ STOP'}else{on=false;rec.stop();S.mode='idle';$('st').textContent='IDLE';$('go').textContent='▶ START JARVIS'}};
+$('lang').onchange=()=>{if(on){rec.stop()}};
+
+function heard(t){for(const k in DEV)t=t.split(k).join(DEV[k]);
+ $('say').textContent='🎙 '+t;
+ if(typing){if(/likhna band|stop typing/.test(t)){typing=false;say('Likhna band kar diya.')}
+  else if(/new line|nayi line/.test(t))$('tx').value+='\n';else $('tx').value+=t+' ';return}
+ const m=t.match(/jarvis|service|jaarvis/);
+ if(m){const c=t.replace(/jarvis|service|jaarvis/,'').trim();if(c)run(c);else{awakeUntil=Date.now()+10000;say(greet())}}
+ else if(Date.now()<awakeUntil){awakeUntil=0;run(t)}}
+
+async function run(c){
+ if(/likhna shuru|start typing|type karo/.test(c)){typing=true;$('tx').focus();return say('Likhna shuru. Band karne ke liye bolo: likhna band karo.')}
+ if(/exit|alvida|bye/.test(c))return say('Alvida Sir!');
+ if(/time|samay|baje/.test(c))return say('Abhi '+new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})+' ho raha hai.');
+ const yt=c.match(/youtube.*?(?:par|pe)?\s*(.+?)\s*(chalao|play)/)||c.match(/(?:play|chalao)\s+(.+)/);
+ if(yt&&/youtube|play|chalao/.test(c)&&yt[1]){go('https://www.youtube.com/results?search_query='+encodeURIComponent(yt[1].replace(/youtube|par|pe/g,'')));return say(yt[1]+' YouTube par dhoondh raha hoon.')}
+ if(/install|download/.test(c)){const n=c.replace(/install|download|karo/g,'').trim();go('https://www.google.com/search?q=download+'+encodeURIComponent(n));return say(n+' ka download page khol diya. Browser se app seedha install nahi ho sakta.')}
+ if(/search|khojo/.test(c)){const q=c.replace(/google|par|search|karo|khojo/g,'').trim();go('https://www.google.com/search?q='+encodeURIComponent(q));return say(q+' search kar diya.')}
+ if(/kholo|open/.test(c)){const n=Object.keys(SITES).find(k=>c.includes(k));if(n){go(SITES[n]);return say(n+' khol diya.')}}
+ say('Soch raha hoon...');const key=localStorage.getItem('jk');
+ if(!key)return say('Pehle Settings mein Gemini API key daalo.');
+ try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`,{method:'POST',headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({contents:[{parts:[{text:'Tum Jarvis ho. Hinglish mein 2-3 vaakya mein bina markdown jawab do. Sawal: '+c}]}]})});
+  const d=await r.json();say(d.candidates[0].content.parts[0].text.replace(/[*#_`]/g,''))}
+ catch(e){say('AI se jawab nahi mila. API key check karo.')}}
+function go(u){window.open(u,'_blank')||(location.href=u)}
+
+/* ---------- 3D globe ---------- */
+const cv=$('c'),x=cv.getContext('2d'),CX=210,CY=210,R=135,TILT=.38,L=[],D=[];let a=0,p=0,ra=0;
+for(let la=-75;la<90;la+=15){const l=[],f=la*Math.PI/180;for(let i=0;i<=28;i++){const t=2*Math.PI*i/28;l.push([Math.cos(f)*Math.cos(t),Math.sin(f),Math.cos(f)*Math.sin(t)])}L.push(l)}
+for(let lo=0;lo<360;lo+=20){const l=[],o=lo*Math.PI/180;for(let i=0;i<=28;i++){const f=-Math.PI/2+Math.PI*i/28;l.push([Math.cos(f)*Math.cos(o),Math.sin(f),Math.cos(f)*Math.sin(o)])}L.push(l)}
+for(let i=0;i<90;i++){const f=Math.asin(Math.random()*1.8-.9),o=Math.random()*6.283;D.push([Math.cos(f)*Math.cos(o),Math.sin(f),Math.cos(f)*Math.sin(o)])}
+const P=(q,s)=>{const xr=q[0]*Math.cos(a)+q[2]*Math.sin(a),zr=-q[0]*Math.sin(a)+q[2]*Math.cos(a),
+ yt=q[1]*Math.cos(TILT)-zr*Math.sin(TILT),zt=q[1]*Math.sin(TILT)+zr*Math.cos(TILT);return[CX+xr*R*s,CY-yt*R*s,zt]};
+const COL={idle:[0,190,255],listening:[0,255,170],speaking:[255,190,40]},SP={idle:.012,listening:.03,speaking:.05};
+const sh=(z,b)=>{const k=.25+.75*(z+1)/2;return`rgb(${b[0]*k|0},${b[1]*k|0},${b[2]*k|0})`};
+(function draw(){const m=S.mode,b=COL[m];a+=SP[m];ra+=SP[m]*2;p+=m=='speaking'?.25:.08;
+ const s=1+(m=='idle'?.012:.035)*Math.sin(p);x.clearRect(0,0,420,420);
+ [R+38,R+24,R+10].forEach((r,i)=>{x.beginPath();x.arc(CX,CY,r*s,0,6.283);x.strokeStyle=sh(-.4+i*.3,b);x.lineWidth=1;x.stroke()});
+ x.lineWidth=3;x.strokeStyle=sh(.8,b);for(let k=0;k<6;k++){x.beginPath();x.arc(CX,CY,(R+52)*s,ra+k*1.047,ra+k*1.047+.6);x.stroke()}
+ L.forEach(l=>{let pr=null;l.forEach(q=>{const c=P(q,s);if(pr){const z=(pr[2]+c[2])/2;x.beginPath();x.moveTo(pr[0],pr[1]);x.lineTo(c[0],c[1]);x.strokeStyle=sh(z,b);x.lineWidth=z>0?2:1;x.stroke()}pr=c})});
+ x.fillStyle='#fff';D.forEach(q=>{const c=P(q,s);if(c[2]>0)x.fillRect(c[0]-2,c[1]-2,4,4)});
+ requestAnimationFrame(draw)})();
+</script></body></html>
