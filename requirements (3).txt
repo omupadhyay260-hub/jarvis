@@ -1,0 +1,8 @@
+SpeechRecognition
+pyaudio
+pyttsx3
+pyautogui
+pyperclip
+pywhatkit
+AppOpener
+requests
